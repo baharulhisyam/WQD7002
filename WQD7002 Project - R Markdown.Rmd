@@ -1,0 +1,1167 @@
+---
+title: "WQD7002 Project"
+subtitle: "Readiness to Adopt Mobile Learning in Quranic Study among Middle-aged Malay Adults"
+output:
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    latex_engine: xelatex
+  html_document:
+    code_folding: hide
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  eval = TRUE,      # TRUE to evaluate every single chunk
+  warning = FALSE,  # FALSE to suppress warnings from being shown
+  message = FALSE,  # FALSE to avoid package loading messages
+  cache = FALSE,    # TRUE to save every single chunk to a folder
+  echo = TRUE,      # TRUE for display code in output document
+  out.width = "80%",
+  out.height = "100%",
+  fig.align = "center"
+)
+```
+
+# {.tabset}
+
+## Introduction
+
+Load R packages
+
+```{r library}
+library(dplyr) # for data frame manipulation
+library(psych) # to calculate reliability eg. cronbach's alpha
+library(tidyverse) # for data manipulation and visualization
+library(ggplot2) # for plotting graphs
+library(stringr) # for string manipulation
+library(correlation) # to calculate PPMC
+library(corrplot) # for correlation graph
+library(fmsb) # for radar chart
+library(car) # for multiple regression chart
+```
+
+## Data Cleaning {.tabset}
+
+Load the questionnaires' raw dataset.
+
+```{r raw dataset}
+#read dataset
+rawData <- read.csv("MLRS_dataset_28th_Sept.csv")
+#summary(rawData)
+rawData %>% skimr::skim()
+
+# function to normalize 3-point Likert-type-scale to 0-to-1 scale
+normalize <- function(x) {
+  #return ((x - min(x)) / (max(x) - min(x)))
+  return ((x - 1) / 2)
+}
+```
+### Factors
+
+Extract Factors Data:
+
+```{r factors data}
+factors <- data.frame(rawData[,6:50])
+
+# remove column E6 (features of Islamic study learning material, unique multiple choice)
+factors <- subset(factors, select = -c(E6))
+# remove columns (G6-Aspect1 Awareness, G13-Aspect2 Ability, G15-Aspect5 - Software Diversity)
+# factors <- subset(factors, select = -c(E6,G6,G13,G15))
+```
+
+Data Cleaning for Factors Data:
+
+```{r factors data cleaning}
+#
+unique(as.vector(as.matrix(factors)))
+
+factors[factors == "Yes / Ya"] <- 1.0
+factors[factors == "No / Tidak"] <- 0.0
+
+factors[factors == "Intermediate / Tahap Pertengahan"] <- 1.0
+factors[factors == "Tahap Pertengahan sehingga tingkatan 6"] <- 1.0
+factors[factors == "Basic / Tahap Asas"] <- 1.0
+factors[factors == "None / Tiada asas"] <- 0.0
+
+factors[factors == "Apple IOS"] <- 1.0
+factors[factors == "Android"] <- 1.0
+
+factors[factors == "mungkin"] <- 0.5
+factors[factors == "Tidak pernah"] <- 0.5
+factors[factors == "Hanya membaca makna"] <- 0.5
+factors[factors == "X pernah"] <- 0.5
+factors[factors == "Tak belajar"] <- 0.5
+factors[factors == "Tidak mencuba lagi"] <- 0.5
+factors[factors == "NA"] <- 0.5
+factors[factors == "Belum pernah masuk kelas bahasa arab"] <- 0.5
+factors[factors == "Belum mencuba untuk belajar"] <- 0.5
+factors[factors == "Mungkin"] <- 0.5
+factors[factors == "tidak pernah mengikuti"] <- 0.5
+factors[factors == "Tidak pernah masuk kelas"] <- 0.5
+factors[factors == "hanya baca tafsir secara am"] <- 0.5
+factors[factors == "In syaa allah"] <- 0.5
+factors[factors == "mengikut masa yang sesuai dgn waktu kerja saya"] <- 0.5
+factors[factors == "Depends on free time"] <- 0.5
+factors[factors == "when i'm want to"] <- 0.5
+factors[factors == "Learn online"] <- 0.5
+factors[factors == " Depends on the free time"] <- 0.5
+factors[factors == "Boleh cuba"] <- 0.5
+factors[factors == "Not sure"] <- 0.5
+factors[factors == "Depends."] <- 0.5
+factors[factors == "I don't know"] <- 0.5
+factors[factors == "Maybe"] <- 0.5
+factors[factors == "Belum tentu"] <- 0.5
+
+factors[factors == "Tidak, kerana kurang penggunaan bahasa Arab. Mengambil bahagian untuk menolong."] <- 0.5
+factors[factors == "I have never learnt arabic"] <- 0.5
+factors[factors == "only simple word easy"] <- 0.5
+factors[factors == "Tak pernah cuba hafal"] <- 0.5
+factors[factors == "Biasanya menghafal sahaja."] <- 0.5
+factors[factors == "Menghafal dan akronim."] <- 0.5
+factors[factors == "Tidak menggunakan Bahasa Arab dlm komunikasi"] <- 0.5
+factors[factors == "I dont communicate in arabic"] <- 0.5
+factors[factors == "Rujuk terjemahan untuk faham sahaja"] <- 0.5
+factors[factors == "Tidak pernah menghadiri kelas bahasa Arab"] <- 0.5
+factors[factors == "Never attend any arabic class"] <- 0.5
+factors[factors == "Tiada keperluan kecuali untuk membaca al-Quran."] <- 0.5
+factors[factors == "Belum pernah belajar bahasa Arab"] <- 0.5
+factors[factors == "tidak pernah belajar secara langsung"] <- 0.5
+factors[factors == "Tidak ketemu lagi yang sesuai untuk orang dewasa"] <- 0.5
+factors[factors == "Just try to learn using terjemahan quran perksts"] <- 0.5
+factors[factors == "tidak pernah mempunyai pegalaman belajar bahasa arab"] <- 0.5
+factors[factors == "Tiada siaran yang sesuai untuk orang dewasa mempelajari bahasa Arab"] <- 0.5
+factors[factors == "tidak pernah mencuba"] <- 0.5
+factors[factors == "Apabila ada masa terluang"] <- 0.5
+factors[factors == "Pada tempat dan masa yg sesuai"] <- 0.5
+factors[factors == "Tidak pasti"] <- 0.5
+factors[factors == "No comment as have never tried before"] <- 0.5
+factors[factors == "Dependent of the response rate"] <- 0.5
+factors[factors == "Depends on the method of teaching "] <- 0.5
+
+factors[factors == "Working purpose"] <- 0.5
+factors[factors == "Some of the words"] <- 0.5
+factors[factors == "Boleh menghafal jika berusaha dgn lebih bersungguh2"] <- 0.5
+factors[factors == "Tak pernah belajar"] <- 0.5
+factors[factors == "Sometimes "] <- 0.5
+factors[factors == "Sederhana penggunaan bahasa Arab. "] <- 0.5
+factors[factors == "Saya memahami bila selalu membaca translation dan saya juga ada asas bahasa Arab. "] <- 0.5
+factors[factors == "N/A"] <- 0.5
+factors[factors == "Saya todak meletakkan fokus dalam prmbelajaran bahasa Arab. InshaAllah kalau saya berusaha, apa2 kaedah boleh berjaya. "] <- 0.5
+factors[factors == "Havent tried on any"] <- 0.5
+factors[factors == "Saya rasa kalau kita berlatih dgn kerap, kita boleh menguasai bahasa Arab dgn lebih baik. "] <- 0.5
+factors[factors == "Prefer English"] <- 0.5
+factors[factors == "Halaqah needs two way communication with an educator. Not via written Q&A"] <- 0.5
+factors[factors == "Yes, perlu tapi ia tidak dapat menggantikan keperluan belajar secara formal. Ia hanya sebagai alat membantu pembelajaran. "] <- 0.5
+
+```
+
+Normalize data to range 0-1
+```{r normalize factors data}
+factors$G1 <- normalize(rawData$G1)
+factors$G2 <- normalize(rawData$G2)
+factors$G3 <- normalize(rawData$G3)
+factors$G4 <- normalize(rawData$G4)
+factors$G5 <- normalize(rawData$G5)
+factors$G6 <- normalize(rawData$G6)
+factors$G7 <- normalize(rawData$G7)
+factors$G8 <- normalize(rawData$G8)
+factors$G9 <- normalize(rawData$G9)
+factors$G10 <- normalize(rawData$G10)
+factors$G11 <- normalize(rawData$G11)
+factors$G12 <- normalize(rawData$G12)
+factors$G13 <- normalize(rawData$G13)
+factors$G14 <- normalize(rawData$G14)
+factors$G15 <- normalize(rawData$G15)
+
+# convert all columns to numeric
+factors <- data.frame(sapply(factors, function(x) as.numeric(as.character(x))))
+
+factors %>% skimr::skim()
+```
+
+### Aspects
+
+Extract Aspects Data
+
+```{r aspects data}
+aspects <- data.frame(rawData[,6:50])
+
+# remove column E6 (features of Islamic study learning material, unique multiple choice)
+aspects <- subset(aspects, select = -c(E6))
+# remove columns (G6-Aspect1 Awareness, G13-Aspect2 Ability, G15-Aspect5 - Software Diversity)
+# aspects <- subset(aspects, select = -c(E6,G6,G13,G15))
+```
+
+Data Cleaning for Factors Data:
+
+```{r aspects data cleaning}
+#
+unique(as.vector(as.matrix(aspects)))
+
+aspects[aspects == "Yes / Ya"] <- 1.0
+aspects[aspects == "No / Tidak"] <- 0.0
+
+aspects[aspects == "Intermediate / Tahap Pertengahan"] <- 1.0
+aspects[aspects == "Tahap Pertengahan sehingga tingkatan 6"] <- 1.0
+aspects[aspects == "Basic / Tahap Asas"] <- 1.0
+aspects[aspects == "None / Tiada asas"] <- 0.0
+
+aspects[aspects == "Apple IOS"] <- 1.0
+aspects[aspects == "Android"] <- 1.0
+
+aspects[aspects == "mungkin"] <- 0.5
+aspects[aspects == "Tidak pernah"] <- 0.5
+aspects[aspects == "Hanya membaca makna"] <- 0.5
+aspects[aspects == "X pernah"] <- 0.5
+aspects[aspects == "Tak belajar"] <- 0.5
+aspects[aspects == "Tidak mencuba lagi"] <- 0.5
+aspects[aspects == "NA"] <- 0.5
+aspects[aspects == "Belum pernah masuk kelas bahasa arab"] <- 0.5
+aspects[aspects == "Belum mencuba untuk belajar"] <- 0.5
+aspects[aspects == "Mungkin"] <- 0.5
+aspects[aspects == "tidak pernah mengikuti"] <- 0.5
+aspects[aspects == "Tidak pernah masuk kelas"] <- 0.5
+aspects[aspects == "hanya baca tafsir secara am"] <- 0.5
+aspects[aspects == "In syaa allah"] <- 0.5
+aspects[aspects == "mengikut masa yang sesuai dgn waktu kerja saya"] <- 0.5
+aspects[aspects == "Depends on free time"] <- 0.5
+aspects[aspects == "when i'm want to"] <- 0.5
+aspects[aspects == "Learn online"] <- 0.5
+aspects[aspects == " Depends on the free time"] <- 0.5
+aspects[aspects == "Boleh cuba"] <- 0.5
+aspects[aspects == "Not sure"] <- 0.5
+aspects[aspects == "Depends."] <- 0.5
+aspects[aspects == "I don't know"] <- 0.5
+aspects[aspects == "Maybe"] <- 0.5
+aspects[aspects == "Belum tentu"] <- 0.5
+
+aspects[aspects == "Tidak, kerana kurang penggunaan bahasa Arab. Mengambil bahagian untuk menolong."] <- 0.5
+aspects[aspects == "I have never learnt arabic"] <- 0.5
+aspects[aspects == "only simple word easy"] <- 0.5
+aspects[aspects == "Tak pernah cuba hafal"] <- 0.5
+aspects[aspects == "Biasanya menghafal sahaja."] <- 0.5
+aspects[aspects == "Menghafal dan akronim."] <- 0.5
+aspects[aspects == "Tidak menggunakan Bahasa Arab dlm komunikasi"] <- 0.5
+aspects[aspects == "I dont communicate in arabic"] <- 0.5
+aspects[aspects == "Rujuk terjemahan untuk faham sahaja"] <- 0.5
+aspects[aspects == "Tidak pernah menghadiri kelas bahasa Arab"] <- 0.5
+aspects[aspects == "Never attend any arabic class"] <- 0.5
+aspects[aspects == "Tiada keperluan kecuali untuk membaca al-Quran."] <- 0.5
+aspects[aspects == "Belum pernah belajar bahasa Arab"] <- 0.5
+aspects[aspects == "tidak pernah belajar secara langsung"] <- 0.5
+aspects[aspects == "Tidak ketemu lagi yang sesuai untuk orang dewasa"] <- 0.5
+aspects[aspects == "Just try to learn using terjemahan quran perksts"] <- 0.5
+aspects[aspects == "tidak pernah mempunyai pegalaman belajar bahasa arab"] <- 0.5
+aspects[aspects == "Tiada siaran yang sesuai untuk orang dewasa mempelajari bahasa Arab"] <- 0.5
+aspects[aspects == "tidak pernah mencuba"] <- 0.5
+aspects[aspects == "Apabila ada masa terluang"] <- 0.5
+aspects[aspects == "Pada tempat dan masa yg sesuai"] <- 0.5
+aspects[aspects == "Tidak pasti"] <- 0.5
+aspects[aspects == "No comment as have never tried before"] <- 0.5
+aspects[aspects == "Dependent of the response rate"] <- 0.5
+aspects[aspects == "Depends on the method of teaching "] <- 0.5
+
+aspects[aspects == "Working purpose"] <- 0.5
+aspects[aspects == "Some of the words"] <- 0.5
+aspects[aspects == "Boleh menghafal jika berusaha dgn lebih bersungguh2"] <- 0.5
+aspects[aspects == "Tak pernah belajar"] <- 0.5
+aspects[aspects == "Sometimes "] <- 0.5
+aspects[aspects == "Sederhana penggunaan bahasa Arab. "] <- 0.5
+aspects[aspects == "Saya memahami bila selalu membaca translation dan saya juga ada asas bahasa Arab. "] <- 0.5
+aspects[aspects == "N/A"] <- 0.5
+aspects[aspects == "Saya todak meletakkan fokus dalam prmbelajaran bahasa Arab. InshaAllah kalau saya berusaha, apa2 kaedah boleh berjaya. "] <- 0.5
+aspects[aspects == "Havent tried on any"] <- 0.5
+aspects[aspects == "Saya rasa kalau kita berlatih dgn kerap, kita boleh menguasai bahasa Arab dgn lebih baik. "] <- 0.5
+aspects[aspects == "Prefer English"] <- 0.5
+aspects[aspects == "Halaqah needs two way communication with an educator. Not via written Q&A"] <- 0.5
+aspects[aspects == "Yes, perlu tapi ia tidak dapat menggantikan keperluan belajar secara formal. Ia hanya sebagai alat membantu pembelajaran. "] <- 0.5
+
+```
+Normalize data to range 0-1
+```{r normalize aspects data}
+aspects$G1 <- normalize(rawData$G1)
+aspects$G2 <- normalize(rawData$G2)
+aspects$G3 <- normalize(rawData$G3)
+aspects$G4 <- normalize(rawData$G4)
+aspects$G5 <- normalize(rawData$G5)
+aspects$G6 <- normalize(rawData$G6)
+aspects$G7 <- normalize(rawData$G7)
+aspects$G8 <- normalize(rawData$G8)
+aspects$G9 <- normalize(rawData$G9)
+aspects$G10 <- normalize(rawData$G10)
+aspects$G11 <- normalize(rawData$G11)
+aspects$G12 <- normalize(rawData$G12)
+aspects$G13 <- normalize(rawData$G13)
+aspects$G14 <- normalize(rawData$G14)
+aspects$G15 <- normalize(rawData$G15)
+
+# convert all columns to numeric
+aspects <- data.frame(sapply(aspects, function(x) as.numeric(as.character(x))))
+
+aspects %>% skimr::skim()
+```
+
+## Demographics
+
+```{r}
+group_age <- function(age){
+  if (age >= 0 & age <= 45){
+    return('40-45 Years Old')
+  }else if(age > 45 & age <= 50){
+    return('46-50 Years Old')
+  }else if (age > 50 & age <= 55){
+    return('51-55 Years Old')
+  }else if (age > 55){
+    return('56-60 Years Old')
+  }
+}
+
+A1 <- data.frame(rawData[,c('A1')])
+colnames(A1) <- c('A1')
+A1$age_group <- sapply(A1$A1,group_age)
+A1.stat <- A1 %>%
+  group_by(age_group) %>%
+  summarise(count=n())
+A1.stat$percentage = A1.stat$count*100/nrow(A1)
+
+A3 <- data.frame(rawData[,c('A3')])
+colnames(A3) <- c('A3')
+A3.stat <- A3 %>%
+  mutate(A3 = str_replace(A3, "Sekolah Menengah", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Sijil", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Spm", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "SPM", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Stpm", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "tingkatan 4", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "tingkatan 6", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Degree", "Bachelor")) %>%
+  group_by(A3) %>%
+  summarise(count=n())
+A3.stat$percentage = A3.stat$count*100/nrow(A3)
+
+C2 <- data.frame(rawData[,c('C2')])
+colnames(C2) <- c('C2')
+C2.stat <- C2 %>%
+  mutate(C2 = str_replace(C2, "None / Tiada asas", "None")) %>%
+  mutate(C2 = str_replace(C2, "Basic / Tahap Asas", "Basic")) %>%
+  mutate(C2 = str_replace(C2, "Tahap Pertengahan sehingga tingkatan 6", "Intermediate")) %>%
+  mutate(C2 = str_replace(C2, "Intermediate / Tahap Pertengahan", "Intermediate")) %>%
+  group_by(C2) %>%
+  summarise(count=n())
+C2.stat$percentage = C2.stat$count*100/nrow(C2)
+
+A4 <- data.frame(rawData[,c('A4')])
+colnames(A4) <- c('A4')
+A4.stat <- A4 %>%
+  mutate(A4 = str_replace(A4, "Kerajaan", "Government Sector")) %>%
+  mutate(A4 = str_replace(A4, "Swasta", "Private Sector")) %>%
+  mutate(A4 = str_replace(A4, "Surirumah", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Bekerja sendiri", "Self Employed")) %>%
+  mutate(A4 = str_replace(A4, "tiada", "Not Disclosed")) %>%
+  mutate(A4 = str_replace(A4, "Housewife ", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Sendiri", "Self Employed")) %>%
+  mutate(A4 = str_replace(A4, "Tnb", "Private Sector")) %>%
+  mutate(A4 = str_replace(A4, "surirumah", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Pesara Kerajaan", "Government Setorrvant")) %>%
+  mutate(A4 = str_replace(A4, "Suri rumah", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "House wife", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Self Employed", "Self Employed")) %>%
+  mutate(A4 = str_replace(A4, "Self employed", "Self Employed")) %>%
+  mutate(A4 = str_replace(A4, "GLC", "Private Sector")) %>%
+  mutate(A4 = str_replace(A4, "Homemaker", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Suri rumahtangga", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Housewife", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Suri Rumah", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "-", "Not Disclosed")) %>%
+  mutate(A4 = str_replace(A4, "Suri Rumah ", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Pesara Government Sector", "Government Sector")) %>%
+  mutate(A4 = str_replace(A4, "Housewifetangga", "Housewife")) %>%
+  mutate(A4 = str_replace(A4, "Housewife ", "Housewife")) %>%
+  group_by(A4) %>%
+  summarise(count=n())
+A4.stat$percentage = A4.stat$count*100/nrow(A4)
+
+A1.stat
+A3.stat
+C2.stat
+A4.stat
+
+```
+
+## Preferences
+
+```{r}
+Q.E6 <- data.frame(rawData[,c('E6')])
+names(Q.E6)[1] <- "E6"
+Q.E6 <- Q.E6 %>%
+  mutate(E6 = str_replace(E6, "Choose tutor/ Pilih tutor.", "1")) %>%
+  mutate(E6 = str_replace(E6, "In-App communication/ Komunikasi dalam Aplikasi", "2")) %>%
+  mutate(E6 = str_replace(E6, "Reminder or Push Notification / Pemberitahuan Peringatan atau Notifikasi", "3")) %>%
+  mutate(E6 = str_replace(E6, "Offline learning / Pembelajaran luar talian", "4")) %>%
+  mutate(E6 = str_replace(E6, "Intuitive Interface / Antara Muka Intuitif \\(mudah difahami\\)", "5")) %>%
+  mutate(E6 = str_replace(E6, "Quiz / Kuiz", "6")) %>%
+  mutate(E6 = str_replace(E6, "Progress bar / Bar Kemajuan", "7")) %>%
+  mutate(E6 = str_replace(E6, "Gamification / Gamifikasi", "8")) %>%
+  mutate(E6 = str_replace(E6, "Option for flexible learning", "9"))
+
+
+data.E6 <- data.frame(str_count(Q.E6$E6, "1"))
+data.E6$O2 <- data.frame(str_count(Q.E6$E6, "2"))
+data.E6$O3 <- data.frame(str_count(Q.E6$E6, "3"))
+data.E6$O4 <- data.frame(str_count(Q.E6$E6, "4"))
+data.E6$O5 <- data.frame(str_count(Q.E6$E6, "5"))
+data.E6$O6 <- data.frame(str_count(Q.E6$E6, "6"))
+data.E6$O7 <- data.frame(str_count(Q.E6$E6, "7"))
+data.E6$O8 <- data.frame(str_count(Q.E6$E6, "8"))
+data.E6$O9 <- data.frame(str_count(Q.E6$E6, "9"))
+
+#colnames(data.E6) <- c('Choose tutor','In-App communication','Reminder or Push Notification','Offline #learning','Intuitive Interface','Quiz','Progress bar','Gamification','Option for flexible learning')
+
+#names(data.E6)[1] <- "O1"
+#names(data.E6)[2] <- "O2"
+#names(data.E6)[3] <- "O3"
+#names(data.E6)[4] <- "O4"
+#names(data.E6)[5] <- "O5"
+#names(data.E6)[6] <- "O6"
+#names(data.E6)[7] <- "O7"
+#names(data.E6)[8] <- "O8"
+#names(data.E6)[9] <- "O9"
+
+data.pref <- data.E6
+data.pref$A3 <- rawData$A3
+
+data.pref <- data.pref %>%
+  mutate(A3 = str_replace(A3, "Sekolah Menengah", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Sijil", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Spm", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "SPM", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Stpm", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "tingkatan 4", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "tingkatan 6", "STPM and below")) %>%
+  mutate(A3 = str_replace(A3, "Degree", "Bachelor"))
+
+colnames(data.pref) <- c('O1','O2','O3','O4','O5','O6','O7','O8','O9','A3')
+```
+
+```{r}
+test <- data.pref %>% group_by(A3) %>%
+  summarise(O1=sum(O1),O2=sum(O2),O3=sum(O3),O4=sum(O4),O5=sum(O5),O6=sum(O6),O7=sum(O7),O8=sum(O8),O9=sum(O9))
+#  summarise(O1=sum(O1)*100/nrow(data.pref),O2=sum(O2)*100/nrow(data.pref),O3=sum(O3)*100/nrow(data.pref),O4=sum(O4)*#100/nrow(data.pref),O5=sum(O5)*100/nrow(data.pref),O6=sum(O6)*100/nrow(data.pref),O7=sum(O7)*100/nrow(data.pref),O8=#sum(O8)*100/nrow(data.pref),O9=sum(O9)*100/nrow(data.pref))
+test <- subset(test, select=-O9)
+test
+
+#normalized <- function(x) {
+#  return((x - min(x)) / (max(x) - min(x)))
+#}
+#test['O1'] <- normalized(test['O1'])
+#test['O2'] <- normalized(test['O2'])
+#test['O3'] <- normalized(test['O3'])
+#test['O4'] <- normalized(test['O4'])
+#test['O5'] <- normalized(test['O5'])
+#test['O6'] <- normalized(test['O6'])
+#test['O7'] <- normalized(test['O7'])
+#test['O8'] <- normalized(test['O8'])
+#test['O9'] <- normalized(test['O9'])
+#test
+
+df <- subset(test, select=-A3)
+#df <- subset(df, select=-O9)
+#df
+
+scl <- rowSums(df)
+v1 <- df[1,]*100/scl[1]
+v2 <- df[2,]*100/scl[2]
+v3 <- df[3,]*100/scl[3]
+v4 <- df[4,]*100/scl[4]
+v5 <- df[5,]*100/scl[5]
+
+#df1 <- data.frame(rbind(rep(25,9),rep(0,9),v1,v2,v3,v4,v5))
+df1 <- data.frame(rbind(rep(25,8),rep(0,8),v1,v2,v3,v4,v5))
+#df1
+
+ 
+rownames(df1) <- c('max','min','Bachelor','Diploma','Master','PhD','STPM and below')
+#colnames(df1) <- c('Choose tutor','In-App communication','Push Notification','Offline learning','Intuitive #Interface','Quiz','Progress bar','Gamification','Flexible learning')
+colnames(df1) <- c('Choose Tutor','In-App Communication','Push Notification','Offline Learning','Intuitive Interface','Quiz','Progress Bar','Gamification')
+df1
+
+# Define fill colors
+colors_fill <- c(scales::alpha("red", 0.1),
+                 scales::alpha("orange", 0.1),
+                 scales::alpha("yellow", 0.1),
+                 scales::alpha("lightgreen", 0.1),
+                 scales::alpha("blue", 0.1),
+                 scales::alpha("purple", 0.1),
+                 scales::alpha("gray", 0.1),
+                 scales::alpha("cyan", 0.1))
+
+# Define line colors
+colors_line <-  c(scales::alpha("darkred", 0.9),
+                  scales::alpha("darkorange", 0.9),
+                  scales::alpha("gold", 0.9),
+                  scales::alpha("darkgreen", 0.9),
+                  scales::alpha("darkblue", 0.9),
+                  scales::alpha("purple", 0.9),
+                  scales::alpha("darkgray", 0.9),
+                  scales::alpha("cyan", 0.9))
+
+radarchart(df1, 
+           seg = 5,  # Number of axis segments
+           title = "Mobile learning feature preferences based on learners' education level",
+           pcol = colors_line,
+           pfcol = colors_fill,
+           plwd = 1)
+
+legend(x=1.15, 
+       y=1.35, 
+       legend = rownames(df1[-c(1,2),]), 
+       bty = "n", pch=10 , col = colors_line, cex = 1.00, pt.cex = 1.0)
+```
+
+```{r}
+data.pref <- data.E6
+data.pref$A1 <- rawData$A1
+
+group_age <- function(age){
+  if (age >= 0 & age <= 45){
+    return('40-45 Years Old')
+  }else if(age > 45 & age <= 50){
+    return('46-50 Years Old')
+  }else if (age > 50 & age <= 55){
+    return('51-55 Years Old')
+  }else if (age > 55){
+    return('56-60 Years Old')
+  }
+}
+
+data.pref$age_group <- sapply(data.pref$A1,group_age)
+#churn_df$tenure_group <- as.factor(churn_df$tenure_group)
+
+df <- subset(data.pref, select=-A1)
+df <- subset(df, select=-O9)
+
+colnames(df) <- c('O1','O2','O3','O4','O5','O6','O7','O8','age_group')
+
+test <- df %>% group_by(age_group) %>%
+  summarise(O1=sum(O1),O2=sum(O2),O3=sum(O3),O4=sum(O4),O5=sum(O5),O6=sum(O6),O7=sum(O7),O8=sum(O8))
+#  summarise(O1=sum(O1)*100/nrow(data.pref),O2=sum(O2)*100/nrow(data.pref),O3=sum(O3)*100/nrow(data.pref),O4=sum(O4)*#100/nrow(data.pref),O5=sum(O5)*100/nrow(data.pref),O6=sum(O6)*100/nrow(data.pref),O7=sum(O7)*100/nrow(data.pref),O8=#sum(O8)*100/nrow(data.pref),O9=sum(O9)*100/nrow(data.pref))
+test
+
+df <- subset(test, select=-age_group)
+
+scl <- rowSums(df)
+v1 <- df[1,]*100/scl[1]
+v2 <- df[2,]*100/scl[2]
+v3 <- df[3,]*100/scl[3]
+v4 <- df[4,]*100/scl[4]
+
+df1 <- data.frame(rbind(rep(20,8),rep(0,8),v1,v2,v3,v4))
+
+rownames(df1) <- c('max','min','40-45 Yrs Old','46-50 Yrs Old','51-55 Yrs Old','56-60 Yrs Old')
+#colnames(df1) <- c('Choose tutor','In-App communication','Push Notification','Offline learning','Intuitive #Interface','Quiz','Progress bar','Gamification','Flexible learning')
+colnames(df1) <- c('Choose Tutor','In-App Communication','Push Notification','Offline Learning','Intuitive Interface','Quiz','Progress Bar','Gamification')
+df1
+
+radarchart(df1, 
+           seg = 5,  # Number of axis segments
+           title = "Mobile learning feature preferences based on age group",
+           pcol = colors_line,
+           pfcol = colors_fill,
+           plwd = 1)
+
+legend(x=1.15, 
+       y=1.35, 
+       legend = rownames(df1[-c(1,2),]), 
+       bty = "n", pch=10 , col = colors_line, cex = 1.00, pt.cex = 1.0)
+```
+
+```{r}
+data.pref <- data.E6
+data.pref$C2 <- rawData$C2
+
+a_level <- function(lvl){
+  if (lvl == 'Basic / Tahap Asas'){
+    return('Basic')
+  }else if(lvl == 'Intermediate / Tahap Pertengahan'){
+    return('Intermediate')
+  }else if (lvl == 'None / Tiada asas'){
+    return('None')
+  }else if (lvl == 'Tahap Pertengahan sehingga tingkatan 6'){
+    return('Intermediate')
+  }
+}
+
+data.pref$alevel <- sapply(data.pref$C2,a_level)
+#churn_df$tenure_group <- as.factor(churn_df$tenure_group)
+
+df <- subset(data.pref, select=-C2)
+df <- subset(df, select=-O9)
+
+colnames(df) <- c('O1','O2','O3','O4','O5','O6','O7','O8','level')
+
+test <- df %>% group_by(level) %>%
+  summarise(O1=sum(O1),O2=sum(O2),O3=sum(O3),O4=sum(O4),O5=sum(O5),O6=sum(O6),O7=sum(O7),O8=sum(O8))
+#  summarise(O1=sum(O1)*100/nrow(data.pref),O2=sum(O2)*100/nrow(data.pref),O3=sum(O3)*100/nrow(data.pref),O4=sum(O4)*#100/nrow(data.pref),O5=sum(O5)*100/nrow(data.pref),O6=sum(O6)*100/nrow(data.pref),O7=sum(O7)*100/nrow(data.pref),O8=#sum(O8)*100/nrow(data.pref),O9=sum(O9)*100/nrow(data.pref))
+test
+
+df <- subset(test, select=-level)
+
+scl <- rowSums(df)
+v1 <- df[1,]*100/scl[1]
+v2 <- df[2,]*100/scl[2]
+v3 <- df[3,]*100/scl[3]
+#v4 <- df[4,]*100/scl[4]
+
+df1 <- data.frame(rbind(rep(20,8),rep(0,8),v1,v2,v3))
+
+rownames(df1) <- c('max','min','Basic','Intermediate','None')
+#colnames(df1) <- c('Choose tutor','In-App communication','Push Notification','Offline learning','Intuitive #Interface','Quiz','Progress bar','Gamification','Flexible learning')
+colnames(df1) <- c('Choose Tutor','In-App Communication','Push Notification','Offline Learning','Intuitive Interface','Quiz','Progress Bar','Gamification')
+df1
+
+radarchart(df1, 
+           seg = 5,  # Number of axis segments
+           title = "Mobile learning feature preferences based on Arabic language knowledge",
+           pcol = colors_line,
+           pfcol = colors_fill,
+           plwd = 1)
+
+legend(x=1.15, 
+       y=1.35, 
+       legend = rownames(df1[-c(1,2),]), 
+       bty = "n", pch=10 , col = colors_line, cex = 1.00, pt.cex = 1.0)
+```
+
+## Cronbach's Alpha {.tabset}
+
+### Factors
+
+\
+
+Christensen & Knezek (2017) developed MLRS to measure the report of teacher's acceptance and readiness in a mobile learning environment. Four factors related to various aspects of mobile learning readiness were identified, with readiness interpreted as the level of acceptance or willingness to incorporate mobile technologies into mobile learning environment.
+
++ Factor 1: Possibilities, related to future possibilities
++ Factor 2: Benefits, related to practices for improving classroom instruction
++ Factor 3: Preferences, related to mobile device preferences
++ Factor 4: External Influences, related to the environment context
+
+By using the same Factors, new survey were constructed in this study as the research instrument to measure the report of student's acceptance and readiness in a mobile learning environment. 
+
+\
+
+Internal consistency reliabilities for this set of data are listed below. Guidelines provided by DeVellis (2017) stated that ranges of Cronbach's Alpha values should be between minimally acceptable (.6 or greater) to excellent (.9 or greater).
+
+```{r Calculate Alpha2}
+factors2.f1 <- factors[,c('D1','D3','G1','G4','G9','G10')]
+#factors2.f1 <- factors[,c('C2','C3','D1','D3','G1','G4','G9','G10')]
+factors2.f2 <- factors[,c('F1','F2','F3','F4','F5','F6','F7','F8','F9','G5','G6','G8','G11','G12')]
+#factors2.f3 <- factors[,c('E1','E2','E3','E4','E5','G2','G3','G7','G15')]
+factors2.f3 <- factors[,c('B1','C4','E1','E2','E3','E4','E5','G2','G3','G7','G15')]
+factors2.f4 <- factors[,c('D2','D4','D5','D6','D7','D8','G13','G14')]
+
+alpha2.f1 <- psych::alpha(factors2.f1, check.keys = TRUE)
+alpha2.f2 <- psych::alpha(factors2.f2, check.keys = TRUE)
+alpha2.f3 <- psych::alpha(factors2.f3, check.keys = TRUE)
+alpha2.f4 <- psych::alpha(factors2.f4, check.keys = TRUE)
+
+alpha2.f <- c(alpha2.f1$total$raw_alpha,alpha2.f2$total$raw_alpha,alpha2.f3$total$raw_alpha,alpha2.f4$total$raw_alpha)
+
+icr <- data.frame(c("F1 (Possibilities)","F2 (Benefits)","F3 (Preferences)","F4 (External Influences)"),
+                  alpha2.f,
+                  c(length(factors2.f1),length(factors2.f2),length(factors2.f3),length(factors2.f4)))
+
+names(icr)[1] <- "Factors"
+names(icr)[2] <- "Cronbach's Alpha"
+names(icr)[3] <- "No. of Items"
+icr
+
+```
+
+\
+
+Descriptive statistics for the mobile learning readiness factors are listed below.
+
+```{r calculate mean2}
+#######################
+
+vector2.f1 <- unlist(factors2.f1[,])
+vector2.f2 <- unlist(factors2.f2[,])
+vector2.f3 <- unlist(factors2.f3[,])
+vector2.f4 <- unlist(factors2.f4[,])
+
+ds <- data.frame(c("F1 (Possibilities)","F2 (Benefits)","F3 (Preferences)","F4 (External Influences)"),
+                 c(nrow(factors2.f1),nrow(factors2.f2),nrow(factors2.f3),nrow(factors2.f4)),
+                 c(mean(vector2.f1),mean(vector2.f2),mean(vector2.f3),mean(vector2.f4)),
+                 c(sd(vector2.f1),sd(vector2.f2),sd(vector2.f3),sd(vector2.f4)))
+
+names(ds)[1] <- "Factors"
+names(ds)[2] <- "N"
+names(ds)[3] <- "Mean"
+names(ds)[4] <- "SD"
+ds
+```
+
+### Aspects
+
+\
+
+Shorfuzzaman & Alhussein (2016) identified six learning aspects need to be considered by students before mobile learning can be adopted. The different aspects of mobile learning that need to be considered are:
+
++ Learners' readiness - to adopt mobile learning
++ Learners' mobility
++ Educators' willingness - to adopt mobile learning
++ Device ubiquity
++ Driving factors - direct towards learners' acceptance
++ Software diversity - diversity of tools used
+
+\
+
+By using similar aspects, four mobile learning aspects were identified to be measured in this study. These aspects are:
+
++ Aspect 1: Awareness
++ Aspect 2: Ability
++ Aspect 3: Driving factors
++ Aspect 4: Software diversity
+
+\
+
+Internal consistency reliabilities for this set of data are listed below. Guidelines provided by DeVellis (2017) stated that ranges of Cronbach's Alpha values should be between minimally acceptable (.6 or greater) to excellent (.9 or greater).
+
+```{r Calculate Alpha Aspects}
+aspects.a1 <- aspects[,c('F1','F2','F3','F4','F5','F6','F7','F8','F9','G1','G5','G6','G8','G11','G12')]
+aspects.a2 <- aspects[,c('D1','D2','D3','D4','D5','D6','D7','D8','G13','G14')]
+#aspects.a3old <- aspects[,c('B1','B2')] # devices
+aspects.a3 <- aspects[,c('C4','G4','G9','G10')]
+#aspects.a3 <- aspects[,c('C2','C3','C4','G4','G9','G10')]
+#aspects.a3 <- aspects[,c('C3','C4','G4','G9','G10')]
+aspects.a4 <- aspects[,c('E1','E2','E3','E4','E5','G2','G3','G7','G15')]
+
+alpha.a1 <- psych::alpha(aspects.a1, check.keys = TRUE)
+alpha.a2 <- psych::alpha(aspects.a2, check.keys = TRUE)
+#alpha.a3old <- psych::alpha(aspects.a3old, check.keys = TRUE)
+alpha.a3 <- psych::alpha(aspects.a3, check.keys = TRUE)
+alpha.a4 <- psych::alpha(aspects.a4, check.keys = TRUE)
+
+#alpha.a <- c(alpha.a1$total$raw_alpha,alpha.a2$total$raw_alpha,alpha.a3$total$raw_alpha,alpha.a4$total$raw_alpha,alpha.a5$total$raw_alpha)
+alpha.a <- c(alpha.a1$total$raw_alpha,alpha.a2$total$raw_alpha,alpha.a3$total$raw_alpha,alpha.a4$total$raw_alpha)
+
+#icr.a <- data.frame(c("A1 (Awareness)","A2 (Ability)","A3 (Devices)","A4 (Driving Factors)","A5 (Software Diversity)"),
+#                  alpha.a,
+#                  c(length(aspects.a1),length(aspects.a2),length(aspects.a3),length(aspects.a4),length(aspects.a5)))
+icr.a <- data.frame(c("A1 (Awareness)","A2 (Ability)","A3 (Driving Factors)","A4 (Software Diversity)"),
+                  alpha.a,
+                  c(length(aspects.a1),length(aspects.a2),length(aspects.a3),length(aspects.a4)))
+
+names(icr.a)[1] <- "Aspects"
+names(icr.a)[2] <- "Cronbach's Alpha"
+names(icr.a)[3] <- "No. of Items"
+icr.a
+
+```
+
+\
+
+Descriptive statistics for the mobile learning readiness aspects are listed below.
+
+```{r calculate mean aspects}
+#######################
+
+vector.a1 <- unlist(aspects.a1[,])
+vector.a2 <- unlist(aspects.a2[,])
+#vector.a3old <- unlist(aspects.a3old[,])
+vector.a3 <- unlist(aspects.a3[,])
+vector.a4 <- unlist(aspects.a4[,])
+
+ds.a <- data.frame(c("A1 (Awareness)","A2 (Ability)","A3 (Driving Factors)","A4 (Software Diversity)"),
+                 c(nrow(aspects.a1),nrow(aspects.a2),nrow(aspects.a3),nrow(aspects.a4)),
+                 c(mean(vector.a1),mean(vector.a2),mean(vector.a3),mean(vector.a4)),
+                 c(sd(vector.a1),sd(vector.a2),sd(vector.a3),sd(vector.a4)))
+
+names(ds.a)[1] <- "Aspects"
+names(ds.a)[2] <- "N"
+names(ds.a)[3] <- "Mean"
+names(ds.a)[4] <- "SD"
+ds.a
+```
+
+### Factors Old Calculation
+
+About factors, F1 F2 F3 F4
+
+```{r Calculate Alpha}
+factors.f1 <- factors[,c('D1','D3','G1','G4','G9','G10')]
+factors.f2 <- factors[,c('F1','F2','F3','F4','F5','F6','F7','F8','F9','G5','G8','G11','G12')]
+factors.f3 <- factors[,c('E1','E2','E3','E4','E5','G2','G3','G7')]
+factors.f4 <- factors[,c('D2','D4','D5','D6','D7','D8','G14')]
+
+alpha.f1 <- psych::alpha(factors.f1, check.keys = TRUE)
+alpha.f2 <- psych::alpha(factors.f2, check.keys = TRUE)
+alpha.f3 <- psych::alpha(factors.f3, check.keys = TRUE)
+alpha.f4 <- psych::alpha(factors.f4, check.keys = TRUE)
+
+alpha.f <- c(alpha.f1$total$raw_alpha,alpha.f2$total$raw_alpha,alpha.f3$total$raw_alpha,alpha.f4$total$raw_alpha)
+
+icr <- data.frame(c("F1 (Possibilities)","F2 (Benefits)","F3 (Preferences)","F4 (External Influences)"),
+                  alpha.f,
+                  c(length(factors.f1),length(factors.f2),length(factors.f3),length(factors.f4)))
+
+names(icr)[1] <- "Factors"
+names(icr)[2] <- "Cronbach's Alpha"
+names(icr)[3] <- "No. of Items"
+icr
+
+```
+
+Calculate mean for factors
+
+```{r calculate mean}
+#######################
+
+vector.f1 <- unlist(factors.f1[,])
+vector.f2 <- unlist(factors.f2[,])
+vector.f3 <- unlist(factors.f3[,])
+vector.f4 <- unlist(factors.f4[,])
+
+ds <- data.frame(c("F1 (Possibilities)","F2 (Benefits)","F3 (Preferences)","F4 (External Influences)"),
+                 c(nrow(factors.f1),nrow(factors.f2),nrow(factors.f3),nrow(factors.f4)),
+                 c(mean(vector.f1),mean(vector.f2),mean(vector.f3),mean(vector.f4)),
+                 c(sd(vector.f1),sd(vector.f2),sd(vector.f3),sd(vector.f4)))
+
+names(ds)[1] <- "Factors"
+names(ds)[2] <- "N"
+names(ds)[3] <- "Mean"
+names(ds)[4] <- "SD"
+ds
+```
+
+## Associations {.tabset}
+
+```{r factors and aspects dataset 2}
+data2 <- as.data.frame(rowMeans(factors2.f1))
+names(data2)[1] <- "f1"
+data2$f2 <- rowMeans(factors2.f2)
+data2$f3 <- rowMeans(factors2.f3)
+data2$f4 <- rowMeans(factors2.f4)
+data2$a1 <- rowMeans(aspects.a1)
+data2$a2 <- rowMeans(aspects.a2)
+data2$a3 <- rowMeans(aspects.a3)
+data2$a4 <- rowMeans(aspects.a4)
+
+colnames(data2) <- c('F1 Possibilities','F2 Benefits','F3 Preferences','F4 External Influences','A1 Awareness','A2 Ability','A3 Driving Factors','A4 Software Diversity')
+```
+
+### A1 Awareness
+
+#### Association of Awareness and Mobile Learning Readiness Factors
+
+\
+
+Based on Analysis of Variance:
+
++ Significant contributors are F1 (Possibilities) and F2 (Benefits) with p<0.0005
++ The least significant contributor is F4 (External Influences)
+
+```{r A1}
+mod.a1 <- lm(`A1 Awareness` ~ `F1 Possibilities`+`F2 Benefits`+`F3 Preferences`+`F4 External Influences`, data=data2)
+anova(mod.a1)
+```
+
+\
+
+Based on Regression Analysis:
+
++ The most significant contributor is F2 (Benefits) with p<2e-16, followed by F1 (Possibilities) with p=2.86e-10
++ The least contributor is F4 (External Influences) with p=0.05381
+
+```{r}
+summary(mod.a1)
+confint(mod.a1)
+```
+```{r}
+a1.ubeta <- c(summary(mod.a1)$coefficients["(Intercept)","Estimate"],summary(mod.a1)$coefficients["`F1 Possibilities`","Estimate"],summary(mod.a1)$coefficients["`F2 Benefits`","Estimate"],summary(mod.a1)$coefficients["`F3 Preferences`","Estimate"],summary(mod.a1)$coefficients["`F4 External Influences`","Estimate"])
+a1.se <- c(summary(mod.a1)$coefficients["(Intercept)","Std. Error"],summary(mod.a1)$coefficients["`F1 Possibilities`","Std. Error"],summary(mod.a1)$coefficients["`F2 Benefits`","Std. Error"],summary(mod.a1)$coefficients["`F3 Preferences`","Std. Error"],summary(mod.a1)$coefficients["`F4 External Influences`","Std. Error"])
+a1.tvalue <- c(summary(mod.a1)$coefficients["(Intercept)","t value"],summary(mod.a1)$coefficients["`F1 Possibilities`","t value"],summary(mod.a1)$coefficients["`F2 Benefits`","t value"],summary(mod.a1)$coefficients["`F3 Preferences`","t value"],summary(mod.a1)$coefficients["`F4 External Influences`","t value"])
+a1.sig <- c(summary(mod.a1)$coefficients["(Intercept)","Pr(>|t|)"],summary(mod.a1)$coefficients["`F1 Possibilities`","Pr(>|t|)"],summary(mod.a1)$coefficients["`F2 Benefits`","Pr(>|t|)"],summary(mod.a1)$coefficients["`F3 Preferences`","Pr(>|t|)"],summary(mod.a1)$coefficients["`F4 External Influences`","Pr(>|t|)"])
+
+a1.sbeta <- c('NA',summary(mod.a1)$coefficients["`F1 Possibilities`","Estimate"]*(sd(data2$`F1 Possibilities`)/sd(data2$`A1 Awareness`)),summary(mod.a1)$coefficients["`F2 Benefits`","Estimate"]*(sd(data2$`F2 Benefits`)/sd(data2$`A1 Awareness`)),summary(mod.a1)$coefficients["`F3 Preferences`","Estimate"]*(sd(data2$`F3 Preferences`)/sd(data2$`A1 Awareness`)),summary(mod.a1)$coefficients["`F4 External Influences`","Estimate"]/(sd(data2$`F4 External Influences`)/sd(data2$`A1 Awareness`)))
+
+a1.table <- data.frame(a1.ubeta,a1.se,a1.sbeta,a1.tvalue,a1.sig)
+colnames(a1.table) <- c('B','Std. Error','Beta','t','Sig.')
+rownames(a1.table) <- c('(Constant)','F1 (Possibilities)','F2 (Benefits)','F3 (Preferences','F4 (External Influences)')
+
+a1.table
+
+avPlots(mod.a1)
+```
+
+
+\ 
+
+Based on Pearson Product Moment Correlations:
+
++ Awareness correlates the highest with F2 (Benefits) = 0.99 (p<0.001), followed by F1 (Possibilities) = 0.77 (p<0.001)
++ Awareness correlates the lowest with F4 (External Influences) = 0.48 (p<0.001)
+
+```{r}
+data.a1 <- as.data.frame(rowMeans(factors2.f1))
+names(data.a1)[1] <- "f1"
+data.a1$f2 <- rowMeans(factors2.f2)
+data.a1$f3 <- rowMeans(factors2.f3)
+data.a1$f4 <- rowMeans(factors2.f4)
+data.a1$a1 <- rowMeans(aspects.a1)
+
+colnames(data.a1) <- c('F1 (Possibilities)','F2 (Benefits)','F3 (Preferences)','F4 (External Influences)','A1 (Awareness)')
+
+pairs.panels(data.a1)
+cor(data.a1,method=c("pearson"))
+
+correlation::correlation(data.a1,include_factors = TRUE, method = "pearson")
+```
+
+### A2 Ability
+
+#### Association of Ability and Mobile Learning Readiness Factors
+
+\
+
+Based on Analysis of Variance:
+
++ Significant contributors are F1 (Possibilities)and F4 (External Influences) with p<0.0005
++ The least significant contributor is F2 (Benefits)
+
+```{r}
+mod.a2 <- lm(`A2 Ability` ~ `F1 Possibilities`+`F2 Benefits`+`F3 Preferences`+`F4 External Influences`, data=data2)
+anova(mod.a2)
+```
+
+\
+
+Based on regression analysis:
+
++ The most significant contributor is F4 (External Influences) with p<2e-16, followed by F1 (Possibilities) with p<2e-16, then F2 (Benefits) with p=9.2e-08
++ The least contributor is F3 (Preferences) with p=0.00474
+
+```{r}
+summary(mod.a2)
+confint(mod.a2)
+```
+
+```{r}
+a2.ubeta <- c(summary(mod.a2)$coefficients["(Intercept)","Estimate"],summary(mod.a2)$coefficients["`F1 Possibilities`","Estimate"],summary(mod.a2)$coefficients["`F2 Benefits`","Estimate"],summary(mod.a2)$coefficients["`F3 Preferences`","Estimate"],summary(mod.a2)$coefficients["`F4 External Influences`","Estimate"])
+a2.se <- c(summary(mod.a2)$coefficients["(Intercept)","Std. Error"],summary(mod.a2)$coefficients["`F1 Possibilities`","Std. Error"],summary(mod.a2)$coefficients["`F2 Benefits`","Std. Error"],summary(mod.a2)$coefficients["`F3 Preferences`","Std. Error"],summary(mod.a2)$coefficients["`F4 External Influences`","Std. Error"])
+a2.tvalue <- c(summary(mod.a2)$coefficients["(Intercept)","t value"],summary(mod.a2)$coefficients["`F1 Possibilities`","t value"],summary(mod.a2)$coefficients["`F2 Benefits`","t value"],summary(mod.a2)$coefficients["`F3 Preferences`","t value"],summary(mod.a2)$coefficients["`F4 External Influences`","t value"])
+a2.sig <- c(summary(mod.a2)$coefficients["(Intercept)","Pr(>|t|)"],summary(mod.a2)$coefficients["`F1 Possibilities`","Pr(>|t|)"],summary(mod.a2)$coefficients["`F2 Benefits`","Pr(>|t|)"],summary(mod.a2)$coefficients["`F3 Preferences`","Pr(>|t|)"],summary(mod.a2)$coefficients["`F4 External Influences`","Pr(>|t|)"])
+
+a2.sbeta <- c('NA',summary(mod.a2)$coefficients["`F1 Possibilities`","Estimate"]*(sd(data2$`F1 Possibilities`)/sd(data2$`A2 Ability`)),summary(mod.a2)$coefficients["`F2 Benefits`","Estimate"]*(sd(data2$`F2 Benefits`)/sd(data2$`A2 Ability`)),summary(mod.a2)$coefficients["`F3 Preferences`","Estimate"]*(sd(data2$`F3 Preferences`)/sd(data2$`A2 Ability`)),summary(mod.a2)$coefficients["`F4 External Influences`","Estimate"]/(sd(data2$`F4 External Influences`)/sd(data2$`A2 Ability`)))
+
+a2.table <- data.frame(a2.ubeta,a2.se,a2.sbeta,a2.tvalue,a2.sig)
+colnames(a2.table) <- c('B','Std. Error','Beta','t','Sig.')
+rownames(a2.table) <- c('(Constant)','F1 (Possibilities)','F2 (Benefits)','F3 (Preferences','F4 (External Influences)')
+
+a2.table
+
+avPlots(mod.a2)
+```
+
+\ 
+
+Based on Pearson Product Moment Correlations:
+
++ Ability correlates the highest with F4 (External Influences) = 0.97 (p<0.001), followed by F1 (Possibilities) = 0.60 (p<0.001)
++ Ability correlates the lowest with F3 (Preferences) = 0.28 (p<0.001)
+
+```{r}
+data.a2 <- as.data.frame(rowMeans(factors2.f1))
+names(data.a2)[1] <- "f1"
+data.a2$f2 <- rowMeans(factors2.f2)
+data.a2$f3 <- rowMeans(factors2.f3)
+data.a2$f4 <- rowMeans(factors2.f4)
+data.a2$a2 <- rowMeans(aspects.a2)
+
+colnames(data.a2) <- c('F1 (Possibilities)','F2 (Benefits)','F3 (Preferences)','F4 (External Influences)','A2 (Ability)')
+
+pairs.panels(data.a2)
+cor(data.a2,method=c("pearson"))
+
+correlation::correlation(data.a2,include_factors = TRUE, method = "pearson")
+```
+
+### A3 Driving Factors
+
+#### Association of Driving Factors and Mobile Learning Readiness Factors
+
+\
+
+Based on Analysis of Variance:
+
++ Significant contributors are F1 (Possibilities) and F2 (Benefits) with p<0.0005
++ The least contributor is F4 (External Influences)
+
+```{r}
+mod.a3 <- lm(`A3 Driving Factors` ~ `F1 Possibilities`+`F2 Benefits`+`F3 Preferences`+`F4 External Influences`, data=data2)
+anova(mod.a3)
+```
+
+\
+
+Based on regression analysis:
+
++ The most significant contributor is F3 (Preferences) with p=0.000402
++ The least contributor is F4 (External Influences) with p<0.050872
+
+```{r}
+summary(mod.a3)
+confint(mod.a3)
+```
+
+```{r}
+a3.ubeta <- c(summary(mod.a3)$coefficients["(Intercept)","Estimate"],summary(mod.a3)$coefficients["`F1 Possibilities`","Estimate"],summary(mod.a3)$coefficients["`F2 Benefits`","Estimate"],summary(mod.a3)$coefficients["`F3 Preferences`","Estimate"],summary(mod.a3)$coefficients["`F4 External Influences`","Estimate"])
+a3.se <- c(summary(mod.a3)$coefficients["(Intercept)","Std. Error"],summary(mod.a3)$coefficients["`F1 Possibilities`","Std. Error"],summary(mod.a3)$coefficients["`F2 Benefits`","Std. Error"],summary(mod.a3)$coefficients["`F3 Preferences`","Std. Error"],summary(mod.a3)$coefficients["`F4 External Influences`","Std. Error"])
+a3.tvalue <- c(summary(mod.a3)$coefficients["(Intercept)","t value"],summary(mod.a3)$coefficients["`F1 Possibilities`","t value"],summary(mod.a3)$coefficients["`F2 Benefits`","t value"],summary(mod.a3)$coefficients["`F3 Preferences`","t value"],summary(mod.a3)$coefficients["`F4 External Influences`","t value"])
+a3.sig <- c(summary(mod.a3)$coefficients["(Intercept)","Pr(>|t|)"],summary(mod.a3)$coefficients["`F1 Possibilities`","Pr(>|t|)"],summary(mod.a3)$coefficients["`F2 Benefits`","Pr(>|t|)"],summary(mod.a3)$coefficients["`F3 Preferences`","Pr(>|t|)"],summary(mod.a3)$coefficients["`F4 External Influences`","Pr(>|t|)"])
+
+a3.sbeta <- c('NA',summary(mod.a3)$coefficients["`F1 Possibilities`","Estimate"]*(sd(data2$`F1 Possibilities`)/sd(data2$`A3 Driving Factors`)),summary(mod.a3)$coefficients["`F2 Benefits`","Estimate"]*(sd(data2$`F2 Benefits`)/sd(data2$`A3 Driving Factors`)),summary(mod.a3)$coefficients["`F3 Preferences`","Estimate"]*(sd(data2$`F3 Preferences`)/sd(data2$`A3 Driving Factors`)),summary(mod.a3)$coefficients["`F4 External Influences`","Estimate"]/(sd(data2$`F4 External Influences`)/sd(data2$`A3 Driving Factors`)))
+
+a3.table <- data.frame(a3.ubeta,a3.se,a3.sbeta,a3.tvalue,a3.sig)
+colnames(a3.table) <- c('B','Std. Error','Beta','t','Sig.')
+rownames(a3.table) <- c('(Constant)','F1 (Possibilities)','F2 (Benefits)','F3 (Preferences','F4 (External Influences)')
+
+a3.table
+
+avPlots(mod.a3)
+```
+
+\ 
+
+Based on Pearson Product Moment Correlations:
+
++ Driving Factors correlates the highest with F2 (Benefits) = 0.56 (p<0.001), followed by F3 (Preferences) = 0.55 (p<0.001) and F1 (Possibilities) = 0.54 (p<0.001). The correlation values for these 3 factors are very close to each other.
++ Driving Factors correlates the lowest with F4 (External Influences) = 0.23 (p=0.003)
+
+```{r}
+data.a3 <- as.data.frame(rowMeans(factors2.f1))
+names(data.a3)[1] <- "f1"
+data.a3$f2 <- rowMeans(factors2.f2)
+data.a3$f3 <- rowMeans(factors2.f3)
+data.a3$f4 <- rowMeans(factors2.f4)
+data.a3$a3 <- rowMeans(aspects.a3)
+
+colnames(data.a3) <- c('F1 (Possibilities)','F2 (Benefits)','F3 (Preferences)','F4 (External Influences)','A3 (Driving Factors)')
+
+pairs.panels(data.a3)
+cor(data.a3,method=c("pearson"))
+
+correlation::correlation(data.a3,include_factors = TRUE, method = "pearson")
+```
+
+### A4 Software Diversity
+
+#### Association of Software Diversity and Mobile Learning Readiness Factors
+
+\
+
+Based on Analysis of Variance:
+
++ Significant contributors are F1 (Possibilities), F2 (Benefits), and F3 (Preferences) with p<0.0005
++ The least contributor is F4 (External Influences)
+
+```{r}
+mod.a4 <- lm(`A4 Software Diversity` ~ `F1 Possibilities`+`F2 Benefits`+`F3 Preferences`+`F4 External Influences`, data=data2)
+anova(mod.a4)
+```
+
+\
+
+Based on regression analysis:
+
++ The most significant contributor is F3 (Preferences) with p<2e-16
++ The least contributor is F2 (Benefits) with p=0.76874
+
+```{r}
+summary(mod.a4)
+confint(mod.a4)
+```
+
+```{r}
+a4.ubeta <- c(summary(mod.a4)$coefficients["(Intercept)","Estimate"],summary(mod.a4)$coefficients["`F1 Possibilities`","Estimate"],summary(mod.a4)$coefficients["`F2 Benefits`","Estimate"],summary(mod.a4)$coefficients["`F3 Preferences`","Estimate"],summary(mod.a4)$coefficients["`F4 External Influences`","Estimate"])
+a4.se <- c(summary(mod.a4)$coefficients["(Intercept)","Std. Error"],summary(mod.a4)$coefficients["`F1 Possibilities`","Std. Error"],summary(mod.a4)$coefficients["`F2 Benefits`","Std. Error"],summary(mod.a4)$coefficients["`F3 Preferences`","Std. Error"],summary(mod.a4)$coefficients["`F4 External Influences`","Std. Error"])
+a4.tvalue <- c(summary(mod.a4)$coefficients["(Intercept)","t value"],summary(mod.a4)$coefficients["`F1 Possibilities`","t value"],summary(mod.a4)$coefficients["`F2 Benefits`","t value"],summary(mod.a4)$coefficients["`F3 Preferences`","t value"],summary(mod.a4)$coefficients["`F4 External Influences`","t value"])
+a4.sig <- c(summary(mod.a4)$coefficients["(Intercept)","Pr(>|t|)"],summary(mod.a4)$coefficients["`F1 Possibilities`","Pr(>|t|)"],summary(mod.a4)$coefficients["`F2 Benefits`","Pr(>|t|)"],summary(mod.a4)$coefficients["`F3 Preferences`","Pr(>|t|)"],summary(mod.a4)$coefficients["`F4 External Influences`","Pr(>|t|)"])
+
+a4.sbeta <- c('NA',summary(mod.a4)$coefficients["`F1 Possibilities`","Estimate"]*(sd(data2$`F1 Possibilities`)/sd(data2$`A4 Software Diversity`)),summary(mod.a4)$coefficients["`F2 Benefits`","Estimate"]*(sd(data2$`F2 Benefits`)/sd(data2$`A4 Software Diversity`)),summary(mod.a4)$coefficients["`F3 Preferences`","Estimate"]*(sd(data2$`F3 Preferences`)/sd(data2$`A4 Software Diversity`)),summary(mod.a4)$coefficients["`F4 External Influences`","Estimate"]/(sd(data2$`F4 External Influences`)/sd(data2$`A4 Software Diversity`)))
+
+a4.table <- data.frame(a4.ubeta,a4.se,a4.sbeta,a4.tvalue,a4.sig)
+colnames(a4.table) <- c('B','Std. Error','Beta','t','Sig.')
+rownames(a4.table) <- c('(Constant)','F1 (Possibilities)','F2 (Benefits)','F3 (Preferences','F4 (External Influences)')
+
+a4.table
+
+avPlots(mod.a4)
+```
+
+\ 
+
+Based on Pearson Product Moment Correlations:
+
++ Software Diversity correlates the highest with F3 (Preferences) = 0.98 (p<0.001), followed by F2 (Benefits) = 0.65 (p<0.001)
++ Software Diversity correlates the lowest with F4 (External Influences) = 0.33 (p<0.001)
+
+```{r}
+data.a4 <- as.data.frame(rowMeans(factors2.f1))
+names(data.a4)[1] <- "f1"
+data.a4$f2 <- rowMeans(factors2.f2)
+data.a4$f3 <- rowMeans(factors2.f3)
+data.a4$f4 <- rowMeans(factors2.f4)
+data.a4$a4 <- rowMeans(aspects.a4)
+
+colnames(data.a4) <- c('F1 (Possibilities)','F2 (Benefits)','F3 (Preferences)','F4 (External Influences)','A4 (Software Diversity)')
+
+pairs.panels(data.a4)
+cor(data.a4,method=c("pearson"))
+
+correlation::correlation(data.a4,include_factors = TRUE, method = "pearson")
+```
+
+### Correlation Extra
+
+\
+
+Highest Pearson Product Moment Correlations of Factors with each Aspects in descending order as below:
+
++ F1 (Possibilities) - A1 (Awareness), A2 (Ability), A4 (Software Diversity), A3 (Driving Factors)
++ F2 (Benefits) - A1 (Awareness), A4 (Software Diversity), A3 (Driving Factors), A2 (Ability)
++ F3 (Preferences) - A4 (Software Diversity), A1 (Awareness), A3 (Driving Factors), A2 (Ability)
++ F4 (External Influences) - A2 (Ability), A1 (Awareness), A4 (Software Diversity), A4 (Driving Factors)
+
+\
+
+Highest Pearson Product Moment Correlations of Aspects to each Factors in descending order as below:
+
++ A1 (Awareness) - F2 (Benefits), F1 (Possibilities), F3 (Preferences), F4 (External Influences)
++ A2 (Ability) - F4 (External Influences), F1 (Possibilities), F2 (Benefits), F3 (Preferences)
++ A3 (Driving Factors) - F2 (Benefits), F3 (Preferences), F1 (Possibilities), F4 (External Influences)
++ A4 (Software Diversity) - F3 (Preferences), F2 (Benefits), F1 (Possibilities), F4 (External Influences)
+
+\
+
+```{r}
+colnames(data2) <- c('F1 (Possibilities)','F2 (Benefits)','F3 (Preferences)','F4 (External Influences)','A1 (Awareness)','A2 (Ability)','A3 (Driving Factors)','A4 (External Influences)')
+
+corrplot(cor(data2,method=c("pearson")))
+
+pairs.panels(data2)
+cor(data2,method=c("pearson"))
+```
+```{r}
+correlation::correlation(data2,include_factors = TRUE, method = "pearson")
+```
+
+## Prediction
+
+```{r}
+
+
+
+```
